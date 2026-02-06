@@ -43,28 +43,90 @@ def main(stdscr):
     gold_pos = move_gold(None,grid_height,grid_width)
 
     while True:
+        import curses
+import random
+
+
+def main(stdscr):
+
+    def move_object(cur_coords,grid_y,grid_x):
+        new_coords = []
+        while True:
+            new_coords = [
+                random.randint(1,grid_y), 
+                random.randint(1,grid_x)
+                ]
+            if new_coords != cur_coords and new_coords != player_pos:
+                return new_coords
+
+    curses.curs_set(0)
+    stdscr.erase()
+    stdscr.keypad(True)
+    stdscr.scrollok(False)
+
+    grid = [
+        "#########################",
+        "#.......................#",
+        "#.......................#",
+        "#.......................#",
+        "#.......................#",
+        "#.......................#",
+        "#.......................#",
+        "#.......................#",
+        "#########################"
+    ]
+
+    player_level = 1
+    player_gold = 9
+    player_floor = 1
+    player_char = '@'
+    player_pos = [1,1] #y, x
+    grid_height = len(grid) - 2
+    grid_width = len(grid[1]) - 2
+    GRID_Y_OFFSET = 1
+    gold_char = 'o'
+    gold_pos = move_object(None,grid_height,grid_width)
+    stairs_char = '◢'
+    stairs_pos = []
+
+    def draw_game():
+        stdscr.erase()
         for y,row in enumerate(grid):
-            #grid
+            #draw grid
             stdscr.addstr(y + GRID_Y_OFFSET,0,row)
 
-            #player
+            #draw player
             stdscr.addstr(player_pos[0] + GRID_Y_OFFSET,player_pos[1],player_char)
 
-            #gold
+            #draw gold
             stdscr.addstr(gold_pos[0] + GRID_Y_OFFSET,gold_pos[1], gold_char)
 
-            #ui
+            #draw stairs
+            if player_gold >= player_floor * 10:
+                stdscr.addstr(stairs_pos[0] + GRID_Y_OFFSET,stairs_pos[1], stairs_char)
+
+            #draw ui
             ui = [
-        "-------------------------",
-        f"  Lv:{player_level}  Gold:{player_gold}  Floor:{player_floor}",
-        "-------------------------"
-    ]
+            "-------------------------",
+            f"  Lv:{player_level}  Gold:{player_gold}  Floor:{player_floor}",
+            "-------------------------"
+            ]
             stdscr.addstr(grid_height+3,0,ui[0])
             stdscr.addstr(grid_height+4,0,ui[1])
             stdscr.addstr(grid_height+5,0,ui[2])
 
-        stdscr.refresh()
+            stdscr.refresh()
+    
+    def new_floor():
+        nonlocal player_pos
+        nonlocal gold_pos
+        player_pos = move_object([],grid_height,grid_width)
+        gold_pos = move_object(gold_pos,grid_height,grid_width)
 
+    draw_game()
+
+    while True:
+        #input handling
         key = stdscr.getch()
         if key == ord('Q'):
             break
@@ -81,8 +143,19 @@ def main(stdscr):
             if player_pos[1] > 1:
                 player_pos[1] -= 1
 
+            #move gold if touched
         if player_pos == gold_pos:
             player_gold += 1
-            gold_pos = move_gold(gold_pos,grid_height,grid_width)
+            gold_pos = move_object(gold_pos,grid_height,grid_width)
+
+        if player_gold >= player_floor * 10 and not stairs_pos:
+            stairs_pos = move_object(stairs_pos,grid_height,grid_width)
+
+        if player_pos == stairs_pos:
+            player_floor += 1
+            stairs_pos = []
+            new_floor()
+
+        draw_game()
 
 curses.wrapper(main)
