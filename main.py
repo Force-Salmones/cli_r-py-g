@@ -1,17 +1,32 @@
 import curses
 import random
+from gamestate import GameState
 
 
 def main(stdscr):
 
-    def move_gold(cur_coords,grid_y,grid_x):
+    grid = [
+    "#########################",
+    "#.......................#",
+    "#.......................#",
+    "#.......................#",
+    "#.......................#",
+    "#.......................#",
+    "#.......................#",
+    "#.......................#",
+    "#########################"
+]
+
+    state = GameState(grid)
+
+    def move_object(cur_coords,state: GameState):
         new_coords = []
         while True:
-            new_coords = [
-                random.randint(1,grid_y), 
-                random.randint(1,grid_x)
-                ]
-            if new_coords != cur_coords:
+            new_coords = (
+                random.randint(1,state.grid_size.height), 
+                random.randint(1,state.grid_size.width)
+            )
+            if new_coords != cur_coords and new_coords != state.player.pos:
                 return new_coords
 
     curses.curs_set(0)
@@ -19,75 +34,11 @@ def main(stdscr):
     stdscr.keypad(True)
     stdscr.scrollok(False)
 
-    grid = [
-        "#########################",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#########################"
-    ]
 
-    player_level = 1
-    player_gold = 0
-    player_floor = 1
-    player_char = '@'
-    player_pos = [1,1] #y, x
-    grid_height = len(grid) - 2
-    grid_width = len(grid[1]) - 2
+
     GRID_Y_OFFSET = 1
-    gold_char = 'o'
-    gold_pos = move_gold(None,grid_height,grid_width)
+    state.gold_pos = move_object(None,state)
 
-    while True:
-        import curses
-import random
-
-
-def main(stdscr):
-
-    def move_object(cur_coords,grid_y,grid_x):
-        new_coords = []
-        while True:
-            new_coords = [
-                random.randint(1,grid_y), 
-                random.randint(1,grid_x)
-                ]
-            if new_coords != cur_coords and new_coords != player_pos:
-                return new_coords
-
-    curses.curs_set(0)
-    stdscr.erase()
-    stdscr.keypad(True)
-    stdscr.scrollok(False)
-
-    grid = [
-        "#########################",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#.......................#",
-        "#########################"
-    ]
-
-    player_level = 1
-    player_gold = 9
-    player_floor = 1
-    player_char = '@'
-    player_pos = [1,1] #y, x
-    grid_height = len(grid) - 2
-    grid_width = len(grid[1]) - 2
-    GRID_Y_OFFSET = 1
-    gold_char = 'o'
-    gold_pos = move_object(None,grid_height,grid_width)
-    stairs_char = '◢'
-    stairs_pos = []
 
     def draw_game():
         stdscr.erase()
@@ -96,32 +47,30 @@ def main(stdscr):
             stdscr.addstr(y + GRID_Y_OFFSET,0,row)
 
             #draw player
-            stdscr.addstr(player_pos[0] + GRID_Y_OFFSET,player_pos[1],player_char)
+            stdscr.addstr(state.player.pos[0] + GRID_Y_OFFSET,state.player.pos[1],state.player.char)
 
             #draw gold
-            stdscr.addstr(gold_pos[0] + GRID_Y_OFFSET,gold_pos[1], gold_char)
+            stdscr.addstr(state.gold_pos[0] + GRID_Y_OFFSET,state.gold_pos[1], state.gold_char)
 
             #draw stairs
-            if player_gold >= player_floor * 10:
-                stdscr.addstr(stairs_pos[0] + GRID_Y_OFFSET,stairs_pos[1], stairs_char)
+            if state.player.gold >= state.player.floor * 10:
+                stdscr.addstr(state.stairs_pos[0] + GRID_Y_OFFSET,state.stairs_pos[1], state.stairs_char)
 
             #draw ui
             ui = [
             "-------------------------",
-            f"  Lv:{player_level}  Gold:{player_gold}  Floor:{player_floor}",
+            f"  Lv:{state.player.level}  Gold:{state.player.gold}  Floor:{state.player.floor}",
             "-------------------------"
             ]
-            stdscr.addstr(grid_height+3,0,ui[0])
-            stdscr.addstr(grid_height+4,0,ui[1])
-            stdscr.addstr(grid_height+5,0,ui[2])
+            stdscr.addstr(state.grid_size.height+3,0,ui[0])
+            stdscr.addstr(state.grid_size.height+4,0,ui[1])
+            stdscr.addstr(state.grid_size.height+5,0,ui[2])
 
             stdscr.refresh()
     
-    def new_floor():
-        nonlocal player_pos
-        nonlocal gold_pos
-        player_pos = move_object([],grid_height,grid_width)
-        gold_pos = move_object(gold_pos,grid_height,grid_width)
+    def new_floor(state: GameState):
+        state.player.pos = move_object([],state)
+        state.gold_pos = move_object([],state)
 
     draw_game()
 
@@ -131,30 +80,31 @@ def main(stdscr):
         if key == ord('Q'):
             break
         elif key == curses.KEY_UP:
-            if player_pos[0] > 1:
-                player_pos[0] -= 1
+            if state.player.pos[0] > 1:
+                state.player.pos = (state.player.pos[0] - 1, state.player.pos[1])
         elif key == curses.KEY_DOWN:
-            if player_pos[0] < grid_height:
-                player_pos[0] += 1
+            if state.player.pos[0] < state.grid_size.height:
+                state.player.pos = (state.player.pos[0] + 1, state.player.pos[1])
         elif key == curses.KEY_RIGHT:
-            if player_pos[1] < grid_width:
-                player_pos[1] += 1
+            if state.player.pos[1] < state.grid_size.width:
+                state.player.pos = (state.player.pos[0], state.player.pos[1] + 1)
         elif key == curses.KEY_LEFT:
-            if player_pos[1] > 1:
-                player_pos[1] -= 1
+            if state.player.pos[1] > 1:
+                state.player.pos = (state.player.pos[0], state.player.pos[1] - 1)
 
             #move gold if touched
-        if player_pos == gold_pos:
-            player_gold += 1
-            gold_pos = move_object(gold_pos,grid_height,grid_width)
+        if state.player.pos == state.gold_pos:
+            state.player.gold += 1
+            state.gold_pos = move_object(state.gold_pos,state)
 
-        if player_gold >= player_floor * 10 and not stairs_pos:
-            stairs_pos = move_object(stairs_pos,grid_height,grid_width)
+            #spawn stairs if 
+        if state.player.gold >= state.player.floor * 10 and not state.stairs_pos:
+            state.stairs_pos = move_object([],state)
 
-        if player_pos == stairs_pos:
-            player_floor += 1
-            stairs_pos = []
-            new_floor()
+        if state.player.pos == state.stairs_pos:
+            state.player.floor += 1
+            new_floor(state)
+            state.stairs_pos = []
 
         draw_game()
 
