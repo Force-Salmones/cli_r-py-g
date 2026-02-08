@@ -1,9 +1,15 @@
 import curses
 import random
 from gamestate import GameState
+import sys
 
 
 def main(stdscr):
+
+    curses.curs_set(0)
+    stdscr.erase()
+    stdscr.keypad(True)
+    stdscr.scrollok(False)
 
     grid = [
     "#########################",
@@ -18,6 +24,7 @@ def main(stdscr):
 ]
 
     state = GameState(grid)
+    GRID_Y_OFFSET = 1
 
     def move_object(cur_coords,state: GameState):
         new_coords = []
@@ -29,15 +36,21 @@ def main(stdscr):
             if new_coords != cur_coords and new_coords != state.player.pos:
                 return new_coords
 
-    curses.curs_set(0)
-    stdscr.erase()
-    stdscr.keypad(True)
-    stdscr.scrollok(False)
-
-
-
-    GRID_Y_OFFSET = 1
-    state.gold_pos = move_object(None,state)
+    def handle_input(state,key):
+        if key == ord('Q'):
+            sys.exit()
+        elif key == curses.KEY_UP:
+            if state.player.pos[0] > 1:
+                state.player.pos = (state.player.pos[0] - 1, state.player.pos[1])
+        elif key == curses.KEY_DOWN:
+            if state.player.pos[0] < state.grid_size.height:
+                state.player.pos = (state.player.pos[0] + 1, state.player.pos[1])
+        elif key == curses.KEY_RIGHT:
+            if state.player.pos[1] < state.grid_size.width:
+                state.player.pos = (state.player.pos[0], state.player.pos[1] + 1)
+        elif key == curses.KEY_LEFT:
+            if state.player.pos[1] > 1:
+                state.player.pos = (state.player.pos[0], state.player.pos[1] - 1)
 
 
     def draw_game():
@@ -72,35 +85,24 @@ def main(stdscr):
         state.player.pos = move_object([],state)
         state.gold_pos = move_object([],state)
 
+    state.gold_pos = move_object(None,state)
     draw_game()
 
     while True:
         #input handling
         key = stdscr.getch()
-        if key == ord('Q'):
-            break
-        elif key == curses.KEY_UP:
-            if state.player.pos[0] > 1:
-                state.player.pos = (state.player.pos[0] - 1, state.player.pos[1])
-        elif key == curses.KEY_DOWN:
-            if state.player.pos[0] < state.grid_size.height:
-                state.player.pos = (state.player.pos[0] + 1, state.player.pos[1])
-        elif key == curses.KEY_RIGHT:
-            if state.player.pos[1] < state.grid_size.width:
-                state.player.pos = (state.player.pos[0], state.player.pos[1] + 1)
-        elif key == curses.KEY_LEFT:
-            if state.player.pos[1] > 1:
-                state.player.pos = (state.player.pos[0], state.player.pos[1] - 1)
-
+        handle_input(state,key)
+        
             #move gold if touched
         if state.player.pos == state.gold_pos:
             state.player.gold += 1
             state.gold_pos = move_object(state.gold_pos,state)
 
-            #spawn stairs if 
+            #spawn stairs conditionally
         if state.player.gold >= state.player.floor * 10 and not state.stairs_pos:
             state.stairs_pos = move_object([],state)
 
+            #check for stairs collision
         if state.player.pos == state.stairs_pos:
             state.player.floor += 1
             new_floor(state)
