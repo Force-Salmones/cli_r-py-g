@@ -1,6 +1,7 @@
 import curses
 import random
 from gamestate import GameState
+from moveenemy import move_enemy
 import sys
 
 
@@ -33,8 +34,15 @@ def main(stdscr):
                 random.randint(1,state.grid_size.height), 
                 random.randint(1,state.grid_size.width)
             )
-            if new_coords != cur_coords and new_coords != state.player.pos:
+            if new_coords != cur_coords:
+                if cur_coords in state.occupied_coords:
+                    state.occupied_coords.remove(cur_coords)
+                state.occupied_coords.append(new_coords)
                 return new_coords
+
+    def remove_object(cur_coords,state: GameState):
+        if cur_coords in state.occupied_coords:
+            state.occupied_coords = [None if x == cur_coords else x for x in state.occupied_coords]
 
     def handle_input(state,key):
         if key == ord('Q'):
@@ -65,25 +73,39 @@ def main(stdscr):
             #draw gold
             stdscr.addstr(state.gold_pos[0] + GRID_Y_OFFSET,state.gold_pos[1], state.gold_char)
 
+            #draw enemy
+            if state.enemy_pos:
+                stdscr.addstr(state.enemy_pos[0] + GRID_Y_OFFSET,state.enemy_pos[1], state.enemy_char)
+
             #draw stairs
             if state.player.gold >= state.player.floor * 10:
                 stdscr.addstr(state.stairs_pos[0] + GRID_Y_OFFSET,state.stairs_pos[1], state.stairs_char)
+
+            #draw spike
+            if state.player.floor > 1:
+                stdscr.addstr(state.spike_pos[0] + GRID_Y_OFFSET,state.spike_pos[1], state.spike_char)
 
             #draw ui
             ui = [
             "-------------------------",
             f"  Lv:{state.player.level}  Gold:{state.player.gold}  Floor:{state.player.floor}",
+            "-------------------------",
+            f"  Health:{state.player.health}",
             "-------------------------"
             ]
-            stdscr.addstr(state.grid_size.height+3,0,ui[0])
-            stdscr.addstr(state.grid_size.height+4,0,ui[1])
-            stdscr.addstr(state.grid_size.height+5,0,ui[2])
+            
+            for i in range(0,len(ui)):
+                stdscr.addstr(state.grid_size.height+(i+3),0,ui[i])
 
             stdscr.refresh()
     
     def new_floor(state: GameState):
-        state.player.pos = move_object([],state)
-        state.gold_pos = move_object([],state)
+        state.player.pos = move_object(state.player.pos,state)
+        state.gold_pos = move_object(state.gold_pos,state)
+        state.enemy_pos = move_object(state.enemy_pos,state)
+        remove_object(state.spike_pos,state)
+        remove_object(state.stairs_pos,state)
+        state.spike_pos = move_object(None,state)
 
     state.gold_pos = move_object(None,state)
     draw_game()
@@ -100,13 +122,16 @@ def main(stdscr):
 
             #spawn stairs conditionally
         if state.player.gold >= state.player.floor * 10 and not state.stairs_pos:
-            state.stairs_pos = move_object([],state)
+            state.stairs_pos = move_object(None,state)
 
             #check for stairs collision
         if state.player.pos == state.stairs_pos:
             state.player.floor += 1
             new_floor(state)
             state.stairs_pos = []
+
+        if state.enemy_pos and random.randint(1,11 - state.player.floor) < 3:
+            move_enemy(state)
 
         draw_game()
 
