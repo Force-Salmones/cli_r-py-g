@@ -1,5 +1,6 @@
 from player import Player
 from dataclasses import dataclass,field
+from collections import deque
 
 @dataclass
 class GridSize:
@@ -13,6 +14,8 @@ class GameState:
     grid_size: GridSize = field(init=False)
 
     occupied_coords: list[tuple[int,int]] = field(default_factory=list)
+
+    console: deque[str] = field(default_factory=lambda: deque([""] * 4, maxlen=4))
 
     player: Player = field(default_factory=Player)
 

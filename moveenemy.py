@@ -1,4 +1,6 @@
 from gamestate import GameState
+from damageplayer import damage_player
+from cprint import c_print
 
 def move_enemy(state: GameState):
     py, px = state.player.pos
@@ -7,13 +9,17 @@ def move_enemy(state: GameState):
 
     def move():
         if new_pos == (py, px):
+            dmg = (state.player.floor * -1 + 1)-5
             state.enemy_pos = None
-            state.player.health -= 5
+            damage_player(state, dmg)
+            c_print(state,f"The enemy deaks {dmg} damage to you.")
             return
         
         if new_pos == spike_pos:
             state.enemy_pos = None
             state.player.level += 1
+            state.player.max_health += 5
+            c_print(state, "Level up! Max health increased.")
             return
         
         if new_pos in state.occupied_coords:

@@ -1,9 +1,11 @@
 import curses
 import random
+from collections import deque
 from gamestate import GameState
 from moveenemy import move_enemy
+from damageplayer import damage_player
+from cprint import c_print
 import sys
-
 
 def main(stdscr):
 
@@ -22,7 +24,7 @@ def main(stdscr):
     "#.......................#",
     "#.......................#",
     "#########################"
-]
+    ]
 
     state = GameState(grid)
     GRID_Y_OFFSET = 1
@@ -44,22 +46,35 @@ def main(stdscr):
         if cur_coords in state.occupied_coords:
             state.occupied_coords = [None if x == cur_coords else x for x in state.occupied_coords]
 
-    def handle_input(state,key):
+    def handle_input(state: GameState,key):
+        
+        new_pos = None
+
         if key == ord('Q'):
             sys.exit()
         elif key == curses.KEY_UP:
             if state.player.pos[0] > 1:
-                state.player.pos = (state.player.pos[0] - 1, state.player.pos[1])
+                new_pos = (state.player.pos[0] - 1, state.player.pos[1])
         elif key == curses.KEY_DOWN:
             if state.player.pos[0] < state.grid_size.height:
-                state.player.pos = (state.player.pos[0] + 1, state.player.pos[1])
+                new_pos = (state.player.pos[0] + 1, state.player.pos[1])
         elif key == curses.KEY_RIGHT:
             if state.player.pos[1] < state.grid_size.width:
-                state.player.pos = (state.player.pos[0], state.player.pos[1] + 1)
+                new_pos = (state.player.pos[0], state.player.pos[1] + 1)
         elif key == curses.KEY_LEFT:
             if state.player.pos[1] > 1:
-                state.player.pos = (state.player.pos[0], state.player.pos[1] - 1)
-
+                new_pos = (state.player.pos[0], state.player.pos[1] - 1)
+        else:
+            return
+        if new_pos == state.spike_pos or not new_pos:
+            return
+        if new_pos == state.enemy_pos:
+            dmg = (state.player.floor * -1 + 1)-5
+            damage_player(state, dmg)
+            state.enemy_pos = None
+            remove_object(state.enemy_pos,state)
+            c_print(state,f"The enemy deaks {dmg} damage to you.")
+        state.player.pos = new_pos
 
     def draw_game():
         stdscr.erase()
@@ -90,12 +105,16 @@ def main(stdscr):
             "-------------------------",
             f"  Lv:{state.player.level}  Gold:{state.player.gold}  Floor:{state.player.floor}",
             "-------------------------",
-            f"  Health:{state.player.health}",
+            f"  Health:{state.player.health}/{state.player.max_health}",
             "-------------------------"
             ]
             
             for i in range(0,len(ui)):
                 stdscr.addstr(state.grid_size.height+(i+3),0,ui[i])
+
+            #draw console
+            for i, line in enumerate(reversed(state.console)):
+                stdscr.addstr(state.grid_size.height+(i+len(ui)+3),0,line)
 
             stdscr.refresh()
     
@@ -118,10 +137,12 @@ def main(stdscr):
             #move gold if touched
         if state.player.pos == state.gold_pos:
             state.player.gold += 1
+            damage_player(state, 1)
             state.gold_pos = move_object(state.gold_pos,state)
 
             #spawn stairs conditionally
         if state.player.gold >= state.player.floor * 10 and not state.stairs_pos:
+            c_print(state, "The path to the next floor has appeared!")
             state.stairs_pos = move_object(None,state)
 
             #check for stairs collision
